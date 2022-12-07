@@ -9,11 +9,12 @@ from grpc import protos_and_services
 import numpy as np
 from tensorflow.keras.utils import load_img, img_to_array 
 import keras.utils as image
+import tensorflow as tf
 # Keras
 from keras.applications.imagenet_utils import preprocess_input, decode_predictions
 from keras.models import load_model
-
-
+import math
+import jsonify
 # Flask utils
 from flask import Flask, redirect, url_for, request, render_template
 from werkzeug.utils import secure_filename
@@ -59,19 +60,23 @@ def model_predict(fname,model):
 
     :param fname : path to the file 
     """
-    # ResNet50 is trained on color images with 224x224 pixels
-    input_shape = (256, 256, 3)
+    # our hairloss CNN model is trained on color images with 256x256 pixels
+    #input_shape = (256, 256, 3)
 
     # load and resize image ----------------------
 
-    img = image.load_img(fname, target_size=input_shape[:2])
-    x = image.img_to_array(img)
+    # img = image.load_img(fname, target_size=input_shape[:2])
+    img = image.load_img(fname)
+    # x = image.img_to_array(img)
+    resize = tf.image.resize(img, (256,256))
 
     # preprocess image ---------------------------
 
     # make a batch
     import numpy as np
-    x = np.expand_dims(x, axis=0)
+    # x = np.expand_dims(x, axis=0)
+    x = np.expand_dims(resize/255, 0)
+
     print(x.shape)
 
     # apply the preprocessing function of resnet50
@@ -80,6 +85,7 @@ def model_predict(fname,model):
     # model = resnet50.ResNet50(weights='imagenet',
     #                           input_shape=input_shape)
     preds = model.predict(x)
+    
     return preds
 
 @app.route('/', methods=['GET'])
@@ -102,13 +108,16 @@ def upload():
 
         # Make prediction
         preds = model_predict(file_path, model)
-        print(f'Result: {preds:.2f}')
+        print(preds)
+        print('%.8f' % preds)  
         # Process your result for human
-        pred_class = preds.argmax(axis=-1) 
-                   # Simple argmax
-        #pred_class = decode_predictions(preds, top=1)   # ImageNet Decode
-        result = str(pred_class)
-        print(result)               # Convert to string
+        # pred_class = preds.argmax(axis=-1) 
+        # print(pred_class)
+        #            # Simple argmax
+        # #pred_class = decode_predictions(preds, top=1)   # ImageNet Decode
+        result = str(preds)
+        print(result)
+                     # Convert to string
         return result
     return None
 
